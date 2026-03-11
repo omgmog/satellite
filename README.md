@@ -1,7 +1,7 @@
 ## Quick start
 
 1. Fork [this repo](https://github.com/remysucre/satellite) (see below if you need a different name from `satellite`)
-2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-from-a-branch) on the repo (deploy from the `main` branch).
+2. Enable [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site#publishing-from-a-branch) on your fork (deploy from the `main` branch).
 3. Visit the GitHub Pages URL (e.g. `https://username.github.io/satellite/`)
 
 While this sample implementation uses GitHub, the protocol is agnostic to the hosting service.
