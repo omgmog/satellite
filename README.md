@@ -2,7 +2,7 @@
 
 ```
       simple  *
-      static  *  social Networking
+      static  *  social networking
 self-reliant  *
 ```
 
