@@ -60,6 +60,33 @@ function escAttr(s) {
 // --- Pending post cache (optimistic UI) ---
 
 const PENDING_KEY = 'satproto_pending_posts';
+const PENDING_FOLLOWS_KEY = 'satproto_pending_follows';
+
+function savePendingFollow(target) {
+  const pending = getPendingFollows();
+  if (!pending.includes(target)) pending.push(target);
+  localStorage.setItem(PENDING_FOLLOWS_KEY, JSON.stringify(pending));
+}
+
+function getPendingFollows() {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_FOLLOWS_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+
+function clearSyncedFollows(remoteFollows) {
+  const remoteSet = new Set(remoteFollows);
+  const remaining = getPendingFollows().filter((f) => !remoteSet.has(f));
+  localStorage.setItem(PENDING_FOLLOWS_KEY, JSON.stringify(remaining));
+  return remaining;
+}
+
+function removePendingFollow(target) {
+  const remaining = getPendingFollows().filter((f) => f !== target);
+  localStorage.setItem(PENDING_FOLLOWS_KEY, JSON.stringify(remaining));
+}
 
 function savePendingPost(post) {
   const pending = getPendingPosts();
@@ -136,15 +163,20 @@ async function refreshFollows() {
   const { domain } = getState();
   try {
     const list = await feed.fetchFollowList(domain);
+    const pendingFollows = clearSyncedFollows(list.follows);
     const el = document.getElementById('follows-list');
-    if (list.follows.length === 0) {
+    const allFollows = [
+      ...list.follows.map((f) => ({ domain: f, pending: false })),
+      ...pendingFollows.map((f) => ({ domain: f, pending: true })),
+    ];
+    if (allFollows.length === 0) {
       el.innerHTML = '<span class="follows-empty">Not following anyone yet</span>';
       return;
     }
-    el.innerHTML = list.follows
+    el.innerHTML = allFollows
       .map(
-        (f) =>
-          `<span class="follow-chip">${escHtml(f)} <button onclick="doUnfollow('${escAttr(f)}')" class="unfollow-btn">x</button></span>`
+        ({ domain: f, pending }) =>
+          `<span class="follow-chip${pending ? ' follow-pending' : ''}">${escHtml(f)}${pending ? ' <span class="post-pending-label">syncing…</span>' : ''} <button onclick="doUnfollow('${escAttr(f)}')" class="unfollow-btn">x</button></span>`
       )
       .join('');
   } catch (e) {
@@ -160,7 +192,8 @@ async function refreshFeed() {
     const sk = getSecretKey();
     const postArrays = [];
 
-    for (const followed of followList.follows) {
+    const allFollowed = [...new Set([...followList.follows, ...getPendingFollows()])];
+    for (const followed of allFollowed) {
       try {
         const posts = await feed.fetchUserPosts(
           followed,
@@ -351,6 +384,7 @@ window.reinitialize = async function () {
   setStatus('Re-initializing...');
   try {
     localStorage.removeItem(PENDING_KEY);
+    localStorage.removeItem(PENDING_FOLLOWS_KEY);
     await bootstrap({ replace: true });
     setStatus('Site re-initialized!');
     await refreshFeed();
@@ -444,6 +478,7 @@ window.doFollow = async function () {
     ], `follow ${target}`);
 
     document.getElementById('follow-domain-input').value = '';
+    savePendingFollow(target);
     await refreshFollows();
     await refreshFeed();
   } catch (e) {
@@ -458,6 +493,7 @@ window.doUnfollow = async function (target) {
   if (!confirm(`Unfollow ${target}? This will re-encrypt all your posts.`))
     return;
 
+  removePendingFollow(target);
   const { domain, token, repo } = getState();
   setStatus(`Unfollowing ${target}...`);
 
