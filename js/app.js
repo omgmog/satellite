@@ -127,9 +127,7 @@ function showMain() {
 
 function selfDataEntry(repo, token, contentKey) {
   const pk = crypto.fromBase64(localStorage.getItem('satproto_public_key'));
-  const initCommit = localStorage.getItem('satproto_init_commit');
   const data = { content_key: crypto.toBase64(contentKey), repo, token };
-  if (initCommit) data.init_commit = initCommit;
   const plaintext = new TextEncoder().encode(JSON.stringify(data));
   const sealed = crypto.sealBox(plaintext, pk);
   return github.textEntry(
@@ -322,9 +320,6 @@ window.saveSetup = async function () {
     localStorage.setItem('satproto_github_repo', repo);
     localStorage.setItem('satproto_github_token', token);
 
-    const initCommit = await github.getCommitSha(token, repo);
-    localStorage.setItem('satproto_init_commit', initCommit);
-
     await bootstrap();
     showMain();
     setStatus('Ready! Write your first post or follow someone.');
@@ -361,7 +356,6 @@ window.signIn = async function () {
     localStorage.setItem('satproto_secret_key', sk);
     localStorage.setItem('satproto_public_key', crypto.toBase64(publicKey));
     localStorage.setItem('satproto_content_key', selfData.content_key);
-    if (selfData.init_commit) localStorage.setItem('satproto_init_commit', selfData.init_commit);
 
     document.getElementById('public-key-display').textContent =
       `Public key: ${crypto.toBase64(publicKey)}`;
@@ -383,32 +377,19 @@ window.exportKeys = function () {
   );
 };
 
-window.reinitialize = async function () {
-  if (
-    !confirm(
-      'Re-initialize your site? This will permanently delete all posts, follows, and reset your profile.'
-    )
-  )
-    return;
-  setStatus('Re-initializing...');
-  try {
-    const initCommit = localStorage.getItem('satproto_init_commit');
-    if (initCommit) {
-      const { token, repo } = getState();
-      await github.resetToCommit(token, repo, initCommit);
-    }
+window.reinitialize = function () {
+  setStatus(
+    'To reset your site, delete your GitHub fork and re-fork the repository. Remember to log out on all devices.'
+  );
+};
 
-    if ('caches' in window) {
-      const keys = await caches.keys();
-      await Promise.all(keys.map((k) => caches.delete(k)));
-    }
-
-    localStorage.clear();
-    setStatus('Site re-initialized. Reloading...');
-    window.location.reload();
-  } catch (e) {
-    setStatus('Re-initialize failed: ' + e);
+window.logout = async function () {
+  if ('caches' in window) {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
   }
+  localStorage.clear();
+  showSetup();
 };
 
 async function publishPost(post) {

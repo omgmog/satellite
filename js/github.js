@@ -63,11 +63,6 @@ async function commitAndPush(api, headers, treeSha, parentSha, message) {
   if (!updateResp.ok) throw new Error('Failed to update branch ref');
 }
 
-export async function getCommitSha(token, repo) {
-  const resp = await fetch(`https://api.github.com/repos/${repo}/git/ref/heads/main`, { headers: ghHeaders(token) });
-  if (!resp.ok) throw new Error('Failed to get branch ref');
-  return (await resp.json()).object.sha;
-}
 
 export async function fetchFileJson(token, repo, path) {
   const resp = await fetch(
@@ -76,15 +71,6 @@ export async function fetchFileJson(token, repo, path) {
   );
   if (!resp.ok) throw new Error(`Failed to fetch ${path}`);
   return JSON.parse(atob((await resp.json()).content));
-}
-
-export async function resetToCommit(token, repo, sha) {
-  const resp = await fetch(`https://api.github.com/repos/${repo}/git/refs/heads/main`, {
-    method: 'PATCH',
-    headers: ghHeaders(token),
-    body: JSON.stringify({ sha, force: true }),
-  });
-  if (!resp.ok) throw new Error('Failed to reset repo to initial commit');
 }
 
 // Push multiple files in a single commit, merging into the existing tree.
